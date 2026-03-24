@@ -1,0 +1,11 @@
+django>=4.2,<5.0
+djangorestframework>=3.14
+psycopg2-binary
+PyJWT>=2.8
+passlib[bcrypt]
+python-dotenv
+
+# dev/test
+pytest
+pytest-django
+factory-boy
