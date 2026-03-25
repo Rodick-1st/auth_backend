@@ -1,3 +1,6 @@
+import uuid
+
+import bcrypt as _bcrypt
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
@@ -19,9 +22,11 @@ class UserManager(BaseUserManager):
             raise ValueError('Email обязателен')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        if password:
-            from passlib.hash import bcrypt
-            user.password_hash = bcrypt.hash(password)
+        if not password:
+            raise ValueError('Пароль обязателен')
+        user.password_hash = _bcrypt.hashpw(
+            password.encode('utf-8'), _bcrypt.gensalt()
+        ).decode('utf-8')
         user.save(using=self._db)
         return user
 
@@ -66,3 +71,11 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_staff
+
+
+class TokenBlacklist(models.Model):
+    jti = models.UUIDField(unique=True, default=uuid.uuid4)
+    expired_at = models.DateTimeField()
+
+    class Meta:
+        db_table = 'token_blacklist'
