@@ -18,7 +18,12 @@ tags = ["user"]
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(request=RegisterSerializer, responses=UserSerializer)
+    @extend_schema(
+        summary='Регистрация нового пользователя',
+        description='Создаёт нового пользователя. Требует уникальный email и совпадающие пароли.',
+        request=RegisterSerializer,
+        responses=UserSerializer,
+    )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -30,16 +35,18 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        summary='Вход в систему',
+        description='Проверяет email и пароль. Возвращает JWT access token при успешной аутентификации.',
         request=LoginSerializer,
         responses={
             '200': {
                 'type': 'object',
                 'properties': {
                     'access_token': {'type': 'string'},
-                    'token_type': {'type': 'string'}
-                                }
-                 }
-        }
+                    'token_type': {'type': 'string'},
+                },
+            }
+        },
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -67,9 +74,11 @@ class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        summary='Выход из системы',
+        description='Инвалидирует текущий JWT токен, добавляя его в чёрный список. '
+                    'Передайте токен в заголовке: Authorization: Bearer <token>.',
         request=None,
         responses={'200': {'type': 'object', 'properties': {'detail': {'type': 'string'}}}},
-        description='Передай токен в заголовке: Authorization: Bearer <token>',
     )
     def post(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
@@ -98,11 +107,23 @@ class LogoutView(APIView):
 class UserMeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=UserSerializer, tags=tags)
+    @extend_schema(
+        summary='Получить свой профиль',
+        description='Возвращает данные текущего аутентифицированного пользователя.',
+        responses=UserSerializer,
+        tags=tags,
+    )
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
-    @extend_schema(request=UserUpdateSerializer, responses=UserSerializer, tags=tags)
+    @extend_schema(
+        summary='Обновить профиль',
+        description='Частичное обновление профиля. Можно изменить имя, фамилию, отчество. '
+                    'Для смены пароля передайте new_password и new_password_confirm.',
+        request=UserUpdateSerializer,
+        responses=UserSerializer,
+        tags=tags,
+    )
     def patch(self, request):
         serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -110,9 +131,12 @@ class UserMeView(APIView):
         return Response(UserSerializer(user).data)
 
     @extend_schema(
+        summary='Удалить аккаунт',
+        description='Soft-удаление: устанавливает is_active=False и сохраняет дату удаления. '
+                    'Текущий токен автоматически инвалидируется.',
         request=None,
         responses={'200': {'type': 'object', 'properties': {'detail': {'type': 'string'}}}},
-        tags = tags
+        tags=tags,
     )
     def delete(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
