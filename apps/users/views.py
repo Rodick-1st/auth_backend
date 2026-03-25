@@ -12,6 +12,8 @@ from core.jwt_utils import generate_token, decode_token, blacklist_token, is_bla
 from .models import User
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, UserUpdateSerializer
 
+tags = ["user"]
+
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -96,11 +98,11 @@ class LogoutView(APIView):
 class UserMeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=UserSerializer)
+    @extend_schema(responses=UserSerializer, tags=tags)
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
-    @extend_schema(request=UserUpdateSerializer, responses=UserSerializer)
+    @extend_schema(request=UserUpdateSerializer, responses=UserSerializer, tags=tags)
     def patch(self, request):
         serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -110,6 +112,7 @@ class UserMeView(APIView):
     @extend_schema(
         request=None,
         responses={'200': {'type': 'object', 'properties': {'detail': {'type': 'string'}}}},
+        tags = tags
     )
     def delete(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
