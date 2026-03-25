@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'apps.users',
+    'apps.access',
 ]
 
 MIDDLEWARE = [
@@ -156,5 +157,8 @@ SPECTACULAR_SETTINGS = {
                 'bearerFormat': 'JWT',
             }
         }
+    },
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,  # не сбрасывать авторизацию
     },
 }
