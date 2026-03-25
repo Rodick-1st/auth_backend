@@ -1,3 +1,4 @@
+import bcrypt as _bcrypt
 from rest_framework import serializers
 
 from .models import User
@@ -43,3 +44,36 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'patronymic', 'role')
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    new_password = serializers.CharField(min_length=6, write_only=True, required=False)
+    new_password_confirm = serializers.CharField(min_length=6, write_only=True, required=False)
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'patronymic', 'new_password', 'new_password_confirm')
+
+    def validate(self, data):
+        has_new = 'new_password' in data
+        has_confirm = 'new_password_confirm' in data
+        if has_new != has_confirm:
+            raise serializers.ValidationError({'new_password_confirm': 'Необходимо передать оба поля для смены пароля'})
+        if has_new and data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Пароли не совпадают'})
+        return data
+
+    def update(self, instance, validated_data):
+        validated_data.pop('new_password_confirm', None)
+        new_password = validated_data.pop('new_password', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if new_password:
+            instance.password_hash = _bcrypt.hashpw(
+                new_password.encode('utf-8'), _bcrypt.gensalt()
+            ).decode('utf-8')
+
+        instance.save()
+        return instance

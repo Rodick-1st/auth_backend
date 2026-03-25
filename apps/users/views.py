@@ -3,14 +3,14 @@ from datetime import datetime, timezone
 import bcrypt as _bcrypt
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.exceptions import TokenExpiredError, TokenInvalidError, TokenBlacklistedError
 from core.jwt_utils import generate_token, decode_token, blacklist_token, is_blacklisted
 from .models import User
-from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, UserUpdateSerializer
 
 
 class RegisterView(APIView):
@@ -91,3 +91,43 @@ class LogoutView(APIView):
         blacklist_token(jti, expired_at)
 
         return Response({'detail': 'Logged out successfully'}, status=status.HTTP_200_OK)
+
+
+class UserMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=UserSerializer)
+    def get(self, request):
+        return Response(UserSerializer(request.user).data)
+
+    @extend_schema(request=UserUpdateSerializer, responses=UserSerializer)
+    def patch(self, request):
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data)
+
+    @extend_schema(
+        request=None,
+        responses={'200': {'type': 'object', 'properties': {'detail': {'type': 'string'}}}},
+    )
+    def delete(self, request):
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[len('Bearer '):]
+            try:
+                payload = decode_token(token)
+                jti = payload.get('jti')
+                if not is_blacklisted(jti):
+                    exp = payload.get('exp')
+                    expired_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+                    blacklist_token(jti, expired_at)
+            except (TokenExpiredError, TokenInvalidError):
+                pass
+
+        user = request.user
+        user.is_active = False
+        user.deleted_at = datetime.now(tz=timezone.utc)
+        user.save(update_fields=['is_active', 'deleted_at'])
+
+        return Response({'detail': 'Аккаунт деактивирован'}, status=status.HTTP_200_OK)
