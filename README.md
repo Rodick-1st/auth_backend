@@ -2,7 +2,7 @@
 
 Backend-сервис аутентификации и ролевого управления доступом (RBAC).
 
-**Стек:** Django · Django REST Framework · PostgreSQL · PyJWT · bcrypt · drf-spectacular
+**Стек:** Django · Django REST Framework · PostgreSQL · PyJWT · bcrypt · drf-spectacular · Pytest
 
 ---
 
